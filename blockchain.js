@@ -34,7 +34,7 @@ class Block {
       this.nonce++;
       this.hash = this.calculateHash();
     }
-    console.log("Block mined: " + this.hash);
+    console.log("mined Block: " + this.hash);
   }
 }
 
@@ -42,12 +42,16 @@ class Blockchain {
   constructor() {
     this.chain = [this.createGenesisBlock()];
     this.difficulty = 2;
-    this.votes = {};
+    this.votes = {
+      John: 0,
+      Jane: 0,
+      Jerry: 0,
+    };
     this.auditLog = [];
   }
 
   createGenesisBlock() {
-    return new Block(0, "01/01/2024", {});
+    return new Block(0, "01/01/2024", this.votes);
   }
 
   getLatestBlock() {
@@ -61,8 +65,8 @@ class Blockchain {
   }
 
   vote(candidate) {
-    if (!this.votes[candidate]) {
-      this.votes[candidate] = 0;
+    if (!this.votes.hasOwnProperty(candidate)) {
+      return { error: "Invalid candidate" };
     }
     this.votes[candidate]++;
     const newBlock = new Block(
@@ -72,10 +76,23 @@ class Blockchain {
     );
     this.addBlock(newBlock);
     this.auditLog.push({ candidate, timestamp: new Date().toISOString() });
+    return { message: "Vote casted!" };
   }
 
   getResults() {
     return this.votes;
+  }
+
+  getWinner() {
+    let maxVotes = -1;
+    let winner = "";
+    for (let candidate in this.votes) {
+      if (this.votes[candidate] > maxVotes) {
+        maxVotes = this.votes[candidate];
+        winner = candidate;
+      }
+    }
+    return winner;
   }
 
   getAuditLog() {
@@ -107,12 +124,16 @@ app.get("/blockchain", (req, res) => {
 
 app.post("/vote", (req, res) => {
   const { candidate } = req.body;
-  blockchain.vote(candidate);
-  res.send({ message: "Vote casted!" });
+  const result = blockchain.vote(candidate);
+  res.send(result);
 });
 
 app.get("/results", (req, res) => {
   res.send(blockchain.getResults());
+});
+
+app.get("/winner", (req, res) => {
+  res.send({ winner: blockchain.getWinner() });
 });
 
 app.get("/audit-log", (req, res) => {
